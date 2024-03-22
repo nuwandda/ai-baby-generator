@@ -5,8 +5,7 @@ import dlib
 import numpy as np
 from PIL import Image
 from PIL.ExifTags import TAGS
-from draw_face import draw
-import reference_world as world
+import preprocess.reference_world as world
 
 
 PREDICTOR_PATH = 'preprocess/weights/shape_predictor_68_face_landmarks.dat'
@@ -33,20 +32,19 @@ def print_exif_data(exif_data):
             return content
         
     
-def get_focal_length(image_path: str) -> float:
+def get_focal_length(im: Image) -> float:
     """
-    This function takes in an image path and returns the focal length of the image.
+    This function takes in an image and returns the focal length of the image.
 
     Args:
-        image_path (str): The path to the image
+        im (Image): The image for which the focal length is to be calculated.
 
     Returns:
-        float: The focal length of the image
+        float: The focal length of the image.
 
     """
-    with Image.open(image_path) as im:
-        exif = im.getexif()
-        focal = print_exif_data(exif.get_ifd(0x8769))
+    exif = im.getexif()
+    focal = print_exif_data(exif.get_ifd(0x8769))
     return focal
 
 
@@ -105,10 +103,4 @@ def preprocess(im: np.ndarray, focal: float) -> str:
         else:
             gaze += "Forward"
 
-    return gaze
-
-
-if __name__ == "__main__":
-    focal = get_focal_length('sample_images/test3.jpg')
-    image = cv2.imread('sample_images/test3.jpg')
-    print(preprocess(image, focal))
+    return gaze, angles[1]
