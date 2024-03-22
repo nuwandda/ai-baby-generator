@@ -4,8 +4,6 @@ import fastapi as _fapi
 
 import schemas as _schemas
 import services as _services
-from io import BytesIO
-import base64
 import traceback
 
 
@@ -23,20 +21,17 @@ async def root():
 
 
 @app.post("/api/generate/")
-async def generate_image(imgPromptCreate: _schemas.ImageCreate = _fapi.Depends()):
+async def generate_image(babyCreate: _schemas.BabyCreate = _fapi.Depends()):
     
     try:
-        image = await _services.generate_image(imgPrompt=imgPromptCreate)
+        images = await _services.generate_image(babyCreate=babyCreate)
     except Exception as e:
         print(traceback.format_exc())
         return {"message": f"{e.args}"}
     
-    buffered = BytesIO()
-    image.save(buffered, format="JPEG")
-    encoded_img = base64.b64encode(buffered.getvalue())
     payload = {
         "mime" : "image/jpg",
-        "image": encoded_img
+        "images": images
         }
     
     return payload

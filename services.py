@@ -1,103 +1,115 @@
 import schemas as _schemas
-
-import torch 
-from diffusers import StableDiffusionImg2ImgPipeline
 import os
 # from dotenv import load_dotenv
 from PIL import Image
 from io import BytesIO
-from utils import set_seed, age_and_gender
 import numpy as np
+import uuid
+import io
 from pkg_resources import parse_version
+import cv2
+import base64
+from preprocess import preprocess
+from baby_process.baby_process import send_request
+from baby_postprocess.postprocess import generate
 
 
-# Get the token from HuggingFace 
-"""
-Note: make sure .env exist and contains your token
-"""
+TEMP_PATH = 'temp'
+
+# Helper functions
+def create_temp():
+    if not os.path.exists(TEMP_PATH):
+        os.makedirs(TEMP_PATH)
+
+
+def remove_temp_image(id):
+    os.remove(TEMP_PATH + '/' + id + '_child.png')
+
+
+def image_to_base64(pil_image):
+    # Create a BytesIO object to temporarily hold the image data
+    img_byte_array = io.BytesIO()
+
+    # Save the PIL image to the BytesIO object
+    pil_image.save(img_byte_array, format='PNG')
+
+    # Convert the BytesIO object to bytes
+    img_byte_array = img_byte_array.getvalue()
+
+    # Encode the bytes to base64
+    base64_encoded_image = base64.b64encode(img_byte_array)
+
+    # Convert bytes to a UTF-8 string
+    base64_string = base64_encoded_image.decode('utf-8')
+
+    return base64_string
+
+
+async def generate_image(babyCreate: _schemas.BabyCreate) -> Image:
+    temp_id = str(uuid.uuid4())
+    create_temp()
+
+    """
+        ---PREPROCESS---
+        Preprocess the input images to find the best father and mother images 
+    """
+    # Find the best father image
+    current_father_score = 100
+    best_father_image = None
+    for encoded_image in babyCreate.encoded_dad_imgs:
+        init_image = Image.open(BytesIO(base64.b64decode(encoded_image)))
+        aspect_ratio = init_image.width / init_image.height
+        target_height = round(babyCreate.img_height / aspect_ratio)
+
+        # Resize the image
+        if parse_version(Image.__version__) >= parse_version('9.5.0'):
+            resized_image = init_image.resize((babyCreate.img_height, target_height), Image.LANCZOS)
+        else:
+            resized_image = init_image.resize((babyCreate.img_height, target_height), Image.ANTIALIAS)
+
+        _, score = preprocess.preprocess(np.array(resized_image), babyCreate.focal_length)
+        if score < current_father_score:
+            current_father_score = score
+            best_father_image = resized_image
+
+    # Find the best mother image
+    current_mother_score = 100
+    best_mother_image = None
+    for encoded_image in babyCreate.encoded_mom_imgs:
+        init_image = Image.open(BytesIO(base64.b64decode(encoded_image)))
+        aspect_ratio = init_image.width / init_image.height
+        target_height = round(babyCreate.img_height / aspect_ratio)
+
+        # Resize the image
+        if parse_version(Image.__version__) >= parse_version('9.5.0'):
+            resized_image = init_image.resize((babyCreate.img_height, target_height), Image.LANCZOS)
+        else:
+            resized_image = init_image.resize((babyCreate.img_height, target_height), Image.ANTIALIAS)
+
+        _, score = preprocess.preprocess(np.array(resized_image), babyCreate.focal_length)
+        if score < current_mother_score:
+            current_mother_score = score
+            best_mother_image = resized_image
+
+    """
+        ---PROCESS---
+        Generate the baby using the best images
+    """
+    father_encoded_img = image_to_base64(best_father_image)
+    mother_encoded_img = image_to_base64(best_mother_image)
     
-MODEL_PATH = os.getenv('MODEL_PATH')
-if MODEL_PATH is None:
-    MODEL_PATH = 'weights/realisticVisionV60B1_v20Novae.safetensors'
+    child = send_request(str(father_encoded_img), str(mother_encoded_img), token=babyCreate.token,
+                 gender=babyCreate.gender, power_of_dad=str(babyCreate.power_of_dad), ethnicity=babyCreate.ethnicity)
     
+    child.save(TEMP_PATH + '/' + temp_id + '_child.png')
 
-def create_pipeline(model_path):
-    # Create the pipe 
-    pipe = StableDiffusionImg2ImgPipeline.from_single_file(
-        model_path, 
-        revision="fp16", 
-        torch_dtype=torch.float16
-        )
-    
-    # pipe.load_lora_weights(pretrained_model_name_or_path_or_dict="weights/lora_disney.safetensors", adapter_name="disney")
+    """
+        ---POSTPROCESS---
+        Generate realistic baby picture using face swap and Stable Diffusion
+    """
+    return_images = generate(TEMP_PATH + '/' + temp_id + '_child.png', babyCreate.gender, babyCreate.seed, babyCreate.strength,
+                                babyCreate.total_number_of_photos, babyCreate.img_height, babyCreate.guidance_scale, babyCreate.num_inference_steps)
 
-    if torch.backends.mps.is_available():
-        device = "mps"
-    else: 
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-
-    pipe.to(device)
-    
-    return pipe
-
-
-pipe = create_pipeline(MODEL_PATH)
-
-
-async def generate_image(imgPrompt: _schemas.ImageCreate) -> Image:
-    generator = torch.Generator().manual_seed(set_seed()) if float(imgPrompt.seed) == -1 else torch.Generator().manual_seed(int(imgPrompt.seed))
-    request_object_content = await imgPrompt.encoded_base_img.read()
-    init_image = Image.open(BytesIO(request_object_content))
-    aspect_ratio = init_image.width / init_image.height
-    target_height = round(imgPrompt.img_width / aspect_ratio)
-    
-    # Resize the image
-    if parse_version(Image.__version__) >= parse_version('9.5.0'):
-        resized_image = init_image.resize((imgPrompt.img_width, target_height), Image.LANCZOS)
-    else:
-        resized_image = init_image.resize((imgPrompt.img_width, target_height), Image.ANTIALIAS)
-    
-    # Predict gender if necessary, then add it to the prompt
-    if imgPrompt.current_gender == 'Undefined':
-        gender_result, age_result = age_and_gender(np.array(resized_image))
-    else:
-        gender_result = imgPrompt.current_gender
-        age_result = 20
-    
-    if gender_result == 'Multiple faces':
-        return 'There should be single face in the image.'
-    
-    target_gender = 'female' if gender_result.lower() == 'male' else 'male'
-    if age_result < 15:
-        target_gender = 'girl' if gender_result.lower() == 'male' else 'boy'
-    
-    clothes = 'feminine' if gender_result.lower() == 'male' else 'masculine'
-
-    final_prompt = """A realistic portrait of a {}, wearing {} clothes, rim lighting, 
-    studio lighting, dslr, ultra quality, sharp focus, tack sharp, dof, 
-    film grain, Fujifilm XT3, crystal clear, 8K UHD, highly detailed glossy eyes, 
-    high detailed skin, skin pores""".format(target_gender, clothes)
-    negative_prompt = """nude, nsfw, disfigured, ugly, bad, immature, cartoon, anime, 3d, painting, b&w, nude, nsfw"""
-    print('Final Prompt is: ', final_prompt)
-
-    image: Image = pipe(final_prompt,
-                                image=resized_image, strength=imgPrompt.strength,
-                                negative_prompt=negative_prompt, 
-                                guidance_scale=imgPrompt.guidance_scale, 
-                                num_inference_steps=imgPrompt.num_inference_steps, 
-                                generator = generator,
-                                cross_attention_kwargs={"scale": imgPrompt.strength}
-                                ).images[0]
-
-    if not image.getbbox():
-        image: Image = pipe(final_prompt,
-                                    image=resized_image, strength=imgPrompt.strength + 0.1,
-                                    negative_prompt=negative_prompt,
-                                    guidance_scale=imgPrompt.guidance_scale, 
-                                    num_inference_steps=imgPrompt.num_inference_steps, 
-                                    generator = generator,
-                                    cross_attention_kwargs={"scale": imgPrompt.strength}
-                                    ).images[0]
-    
-    return image
+    remove_temp_image(temp_id)
+    return return_images
         
