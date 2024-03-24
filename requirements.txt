@@ -1,3 +1,4 @@
+dlib
 mediapipe
 insightface
 fastapi[all]

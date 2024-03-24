@@ -14,7 +14,7 @@ RUN apt-get install git-lfs
 RUN apt-get install curl -y
 RUN apt-get install ffmpeg -y
 RUN apt-get install wget
-RUN wget https://huggingface.co/spaces/nuwandaa/adcreative-demo-api/resolve/main/weights/realisticVisionV60B1_v20Novae.safetensors\?download\=true --directory-prefix weights --content-disposition
+RUN wget https://huggingface.co/spaces/nuwandaa/adcreative-demo-api/resolve/main/weights/realisticVisionV60B1_v20Novae.safetensors\?download\=true --directory-prefix baby_postprocess/weights --content-disposition
 
 RUN git clone https://github.com/facefusion/facefusion.git --branch ${FACEFUSION_VERSION} --single-branch
 RUN python facefusion/install.py --onnxruntime cuda-11.8 --skip-venv
