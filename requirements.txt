@@ -10,7 +10,7 @@ torch
 torchvision
 diffusers
 deepface
-transformers
+transformers==4.30.2
 filetype==1.2.0
 gradio==3.50.2
 onnx==1.15.0
