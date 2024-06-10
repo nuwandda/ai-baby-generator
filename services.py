@@ -12,6 +12,7 @@ import base64
 from preprocess import preprocess
 from baby_process.baby_process import send_request
 from baby_postprocess.postprocess import generate
+from hair_color_detection import get_hair_color
 
 
 TEMP_PATH = 'temp'
@@ -103,13 +104,31 @@ async def generate_image(babyCreate: _schemas.BabyCreate) -> Image:
     
     child.save(TEMP_PATH + '/' + temp_id + '_child.png')
 
+    # Opens a image in RGB mode
+    # child = Image.open('baby_test2.png')
+    
+    # Size of the image in pixels (size of original image)
+    # (This is not mandatory)
+    width, height = child.size
+    
+    # Setting the points for cropped image
+    left = 270
+    top = 0
+    right = 720
+    bottom = 150
+    
+    # Cropped image of above dimension
+    # (It will not change original image)
+    im1 = child.crop((left, top, right, bottom))
+    im1.save(TEMP_PATH + '/' + temp_id + '_hair.png')
+    hair_color = get_hair_color(TEMP_PATH + '/' + temp_id + '_hair.png')
+
     """
         ---POSTPROCESS---
         Generate realistic baby picture using face swap and Stable Diffusion
     """
-    return_images = generate(TEMP_PATH + '/' + temp_id + '_child.png', babyCreate.gender, babyCreate.seed, babyCreate.strength,
-                                babyCreate.total_number_of_photos, babyCreate.img_height, babyCreate.guidance_scale, babyCreate.num_inference_steps)
+    return_images = generate(TEMP_PATH + '/' + temp_id + '_child.png', babyCreate.gender, babyCreate.total_number_of_photos, hair_color)
 
-    remove_temp_image(temp_id)
+    # remove_temp_image(temp_id)
     return return_images
         
