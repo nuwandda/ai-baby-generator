@@ -18,8 +18,9 @@ class BabyCreate(_PromptBase):
     gender: str = 'female'
     power_of_dad: int = 50
     ethnicity: str = 'unknown'
-    focal_length: float = 0.0
+    focal_length: float = 24000
     total_number_of_photos: int = 3
     gamma: float = 0.47
     eta: float = 0.4
     token: str = '1230pol>EUe208tq'
+    skin_tone: str = 'light'

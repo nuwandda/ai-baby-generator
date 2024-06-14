@@ -19,6 +19,7 @@ if MODEL_PATH is None:
     MODEL_PATH = 'baby_postprocess/weights/realisticVisionV60B1_v20Novae.safetensors'
 background_prompts = ['park', 'school', 'street', 'amusement']
 
+
 def set_seed():
     seed = random.randint(42,4294967295)
     return seed
@@ -31,8 +32,8 @@ def create_temp():
 
 def remove_temp_image(id, photo_number):
     os.remove(TEMP_PATH + '/' + id + '_' + str(photo_number) + '_out.png')
-    os.remove(TEMP_PATH + '/' + id + '_' + '_child.png')
-    os.remove(TEMP_PATH + '/' + id + '_' + '_hair.png')
+    os.remove(TEMP_PATH + '/' + id + '_child.png')
+    os.remove(TEMP_PATH + '/' + id + '_hair.png')
 
 
 def replace(file_path, pattern, subst):
@@ -62,14 +63,17 @@ replace("facefusion/facefusion/core.py", "available_frame_processors = list_dire
         "available_frame_processors = list_directory('facefusion/facefusion/processors/frame/modules')")
 
 
-def generate(image_path, gender, total_number_of_photos, hair_color):
-    temp_id = str(uuid.uuid4())
-    create_temp()
-
-    objs = DeepFace.analyze(img_path = image_path, actions = ['race'])
-    race = objs[0]['dominant_race']
-    if race != 'black' or race != 'white' or race != 'asian':
+def generate(image_path, temp_id, gender, total_number_of_photos, hair_color, ethnicity):
+    race = ''
+    if ethnicity == 'light' or ethnicity == 'fair':
+        race = 'white'
+    elif ethnicity == 'tan':
+        race = 'asian'
+    elif ethnicity == 'brown':
         race = 'latino'
+    else:
+        race = 'black'
+
     prompt_gender = 'girl' if gender == 'female' else 'boy'
     
     photos = {}

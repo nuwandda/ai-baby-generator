@@ -13,9 +13,18 @@ from preprocess import preprocess
 from baby_process.baby_process import send_request
 from baby_postprocess.postprocess import generate
 from hair_color_detection import get_hair_color
+from file_operations import download_folder_from_s3
 
 
 TEMP_PATH = 'temp'
+# S3 bucket name
+bucket_name = 'aibabygenerator-models'
+# Folder in S3 to download
+folder_name = 'aiBaby/reference_photos'
+# Local directory to save the files
+local_dir = 'reference_photos'
+# Download the folder from S3
+download_folder_from_s3(bucket_name, folder_name, local_dir)
 
 # Helper functions
 def create_temp():
@@ -25,6 +34,7 @@ def create_temp():
 
 def remove_temp_image(id):
     os.remove(TEMP_PATH + '/' + id + '_child.png')
+    os.remove(TEMP_PATH + '/' + id + '_hair.png')
 
 
 def image_to_base64(pil_image):
@@ -121,13 +131,13 @@ async def generate_image(babyCreate: _schemas.BabyCreate) -> Image:
     # (It will not change original image)
     im1 = child.crop((left, top, right, bottom))
     im1.save(TEMP_PATH + '/' + temp_id + '_hair.png')
-    hair_color = get_hair_color(TEMP_PATH + '/' + temp_id + '_hair.png')
+    hair_color = get_hair_color(TEMP_PATH + '/' + temp_id + '_hair.png', babyCreate.skin_tone)
 
     """
         ---POSTPROCESS---
         Generate realistic baby picture using face swap and Stable Diffusion
     """
-    return_images = generate(TEMP_PATH + '/' + temp_id + '_child.png', babyCreate.gender, babyCreate.total_number_of_photos, hair_color)
+    return_images = generate(TEMP_PATH + '/' + temp_id + '_child.png', temp_id, babyCreate.gender, babyCreate.total_number_of_photos, hair_color, babyCreate.skin_tone)
 
     # remove_temp_image(temp_id)
     return return_images
