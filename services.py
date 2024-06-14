@@ -140,6 +140,6 @@ async def generate_image(babyCreate: _schemas.BabyCreate) -> Image:
     """
     return_images = generate(TEMP_PATH + '/' + temp_id + '_child.png', temp_id, babyCreate.gender, babyCreate.total_number_of_photos, hair_color, babyCreate.skin_tone)
 
-    # remove_temp_image(temp_id)
+    remove_temp_image(temp_id)
     return return_images
         

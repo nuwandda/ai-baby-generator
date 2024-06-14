@@ -96,7 +96,7 @@ def generate(image_path, temp_id, gender, total_number_of_photos, hair_color, et
         remove_temp_image(temp_id, photo_number)
         photos[photo_number] = encoded_img
 
-    os.remove(TEMP_PATH + '/' + temp_id + '_child.png')
-    os.remove(TEMP_PATH + '/' + temp_id + '_hair.png')
+    # os.remove(TEMP_PATH + '/' + temp_id + '_child.png')
+    # os.remove(TEMP_PATH + '/' + temp_id + '_hair.png')
         
     return photos
