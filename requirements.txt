@@ -1,6 +1,6 @@
-dlib
+dlib==19.24.2
+cmake
 mediapipe
-insightface
 fastapi[all]
 uvicorn
 numpy==1.23.0
@@ -9,7 +9,6 @@ rembg
 torch
 torchvision
 diffusers
-deepface
 transformers==4.30.2
 filetype==1.2.0
 gradio==3.50.2
@@ -19,3 +18,5 @@ opencv-python==4.8.1.78
 psutil==5.9.8
 tqdm==4.66.2
 scipy==1.12.0
+colorthief
+boto3

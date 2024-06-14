@@ -24,7 +24,8 @@ folder_name = 'aiBaby/reference_photos'
 # Local directory to save the files
 local_dir = 'reference_photos'
 # Download the folder from S3
-download_folder_from_s3(bucket_name, folder_name, local_dir)
+if not os.path.exists('reference_photos'):
+    download_folder_from_s3(bucket_name, folder_name, local_dir)
 
 # Helper functions
 def create_temp():

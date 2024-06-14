@@ -55,12 +55,12 @@ def replace(file_path, pattern, subst):
 
 
 # Update the paths in submodule
-replace("facefusion/facefusion/core.py", "available_frame_processors = list_directory('facefusion/processors/frame/modules')",
-        "available_frame_processors = list_directory('facefusion/facefusion/processors/frame/modules')")
-replace("facefusion/facefusion/core.py", "available_ui_layouts = list_directory('facefusion/uis/layouts')",
-        "available_ui_layouts = list_directory('facefusion/facefusion/uis/layouts')")
-replace("facefusion/facefusion/core.py", "available_frame_processors = list_directory('facefusion/processors/frame/modules')",
-        "available_frame_processors = list_directory('facefusion/facefusion/processors/frame/modules')")
+# replace("facefusion/facefusion/core.py", "available_frame_processors = list_directory('facefusion/processors/frame/modules')",
+#         "available_frame_processors = list_directory('facefusion/facefusion/processors/frame/modules')")
+# replace("facefusion/facefusion/core.py", "available_ui_layouts = list_directory('facefusion/uis/layouts')",
+#         "available_ui_layouts = list_directory('facefusion/facefusion/uis/layouts')")
+# replace("facefusion/facefusion/core.py", "available_frame_processors = list_directory('facefusion/processors/frame/modules')",
+#         "available_frame_processors = list_directory('facefusion/facefusion/processors/frame/modules')")
 
 
 def generate(image_path, temp_id, gender, total_number_of_photos, hair_color, ethnicity):
@@ -86,7 +86,7 @@ def generate(image_path, temp_id, gender, total_number_of_photos, hair_color, et
         print(reference_image_path)
 
         # Swap the input face with the generated image
-        subprocess.call(['python', 'facefusion/run.py', '-s', '{}'.format(image_path), 
+        subprocess.call(['python', 'run.py', '-s', '{}'.format(image_path), 
                         '-t', '{}'.format(reference_image_path),
                         '-o', '{}'.format(TEMP_PATH + '/' + temp_id + '_' + str(photo_number) + '_out.png'),
                         '--headless', '--frame-processors', 'face_swapper', 'face_enhancer', '--face-swapper-model',
