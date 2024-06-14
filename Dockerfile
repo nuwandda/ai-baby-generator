@@ -1,6 +1,26 @@
-FROM nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu22.04
+# --------------------------------------------------------------
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License.
+# --------------------------------------------------------------
+# Dockerfile to run ONNXRuntime with source build for CPU
 
-ARG FACEFUSION_VERSION=2.4.1
+FROM mcr.microsoft.com/cbl-mariner/base/python:3
+MAINTAINER Changming Sun "chasun@microsoft.com"
+ADD . /code
+
+RUN tdnf install -y tar ca-certificates build-essential cmake curl python3-devel python3-setuptools python3-wheel python3-pip python3-numpy python3-flatbuffers python3-packaging python3-protobuf
+# The latest cmake version in Mariner2 is 3.21, but we need 3.26+
+RUN /code/dockerfiles/scripts/install_cmake.sh
+
+# Prepare onnxruntime repository & build onnxruntime
+RUN cd /code && /bin/bash ./build.sh --allow_running_as_root --skip_submodule_sync --config Release --build_wheel --update --build --parallel --cmake_extra_defines ONNXRUNTIME_VERSION=$(cat ./VERSION_NUMBER)
+
+FROM mcr.microsoft.com/cbl-mariner/base/python:3
+COPY --from=0 /code/build/Linux/Release/dist /root
+COPY --from=0 /code/dockerfiles/LICENSE-IMAGE.txt /code/LICENSE-IMAGE.txt
+RUN tdnf install -y ca-certificates python3-setuptools python3-wheel python3-pip python3-numpy python3-flatbuffers python3-packaging python3-protobuf python3-mpmath python3-sympy && python3 -m pip install coloredlogs humanfriendly && python3 -m pip install --no-index --find-links /root onnxruntime  && rm -rf /root/*.whl
+
+ARG FACEFUSION_VERSION=2.6.0
 ARG DEBIAN_FRONTEND=noninteractive
 
 WORKDIR /usr/app
@@ -13,18 +33,15 @@ RUN apt-get install git -y
 RUN apt-get install git-lfs
 RUN apt-get install curl -y
 RUN apt-get install ffmpeg -y
-RUN apt-get install wget
-RUN wget https://huggingface.co/spaces/nuwandaa/adcreative-demo-api/resolve/main/weights/realisticVisionV60B1_v20Novae.safetensors\?download\=true --directory-prefix baby_postprocess/weights --content-disposition
 
-RUN git clone https://github.com/facefusion/facefusion.git --branch ${FACEFUSION_VERSION} --single-branch
-RUN python facefusion/install.py --onnxruntime cuda-11.8 --skip-venv
+RUN git clone https://github.com/facefusion/facefusion.git --branch ${FACEFUSION_VERSION} --single-branch .
+RUN python install.py --onnxruntime default --skip-conda
 
 COPY requirements.txt /usr/app/requirements.txt
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
-RUN pip install tensorflow[and-cuda]
+RUN pip install tensorflow
 RUN pip install typing-extensions==4.9.0 --upgrade
-ENV MODEL_PATH="baby_postprocess/weights/realisticVisionV60B1_v20Novae.safetensors"
 COPY . .
 
 CMD ["uvicorn", "app:app", "--proxy-headers", "--host", "0.0.0.0", "--port", "80", "--workers", "3","--log-level", "info"]
