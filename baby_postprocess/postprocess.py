@@ -8,7 +8,6 @@ import base64
 from tempfile import mkstemp
 from shutil import move, copymode
 from os import fdopen, remove
-from deepface import DeepFace
 from os import listdir
 from os.path import isfile, join
 
