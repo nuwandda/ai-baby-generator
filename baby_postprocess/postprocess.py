@@ -13,9 +13,6 @@ from os.path import isfile, join
 
 
 TEMP_PATH = 'temp'
-MODEL_PATH = os.getenv('MODEL_PATH')
-if MODEL_PATH is None:
-    MODEL_PATH = 'baby_postprocess/weights/realisticVisionV60B1_v20Novae.safetensors'
 background_prompts = ['park', 'school', 'street', 'amusement']
 
 
@@ -87,7 +84,7 @@ def generate(image_path, temp_id, gender, total_number_of_photos, hair_color, et
                         '-t', '{}'.format(reference_image_path),
                         '-o', '{}'.format(TEMP_PATH + '/' + temp_id + '_' + str(photo_number) + '_out.png'),
                         '--headless', '--frame-processors', 'face_swapper', 'face_enhancer', '--face-swapper-model',
-                        'simswap_512_unofficial'])
+                        'simswap_256'])
 
         final_image = Image.open(TEMP_PATH + '/' + temp_id + '_' + str(photo_number) + '_out.png')
         buffered = BytesIO()
