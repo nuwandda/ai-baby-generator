@@ -18,6 +18,7 @@ RUN wget https://huggingface.co/h94/IP-Adapter-FaceID/resolve/main/ip-adapter-fa
 COPY requirements.txt /usr/app/requirements.txt
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
+RUN pip install git+https://github.com/nuwandda/IP-Adapter.git
 COPY . .
 
 CMD ["uvicorn", "app:app", "--proxy-headers", "--host", "0.0.0.0", "--port", "80", "--workers", "3"]
