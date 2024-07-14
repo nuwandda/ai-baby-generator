@@ -21,7 +21,7 @@ def send_request(father_image, mother_image, token='1230pol>EUe208tq', gender='f
                  ethnicity='unknown'):
     service = {
         'prod': True,
-        'api':'http://172.203.200.80/predict_v2', 
+        'api':'http://172.210.31.221/predict_v3', 
         'headers': {'accept': 'application/json',
             'access-token': token,
             'Content-type': 'application/json'
