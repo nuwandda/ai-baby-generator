@@ -24,12 +24,13 @@ async def root():
 async def generate_image(babyCreate: _schemas.BabyCreate = _fapi.Depends()):
     
     try:
-        images = await _services.generate_image(babyCreate=babyCreate)
+        images, message = await _services.generate_image(babyCreate=babyCreate)
     except Exception as e:
         print(traceback.format_exc())
         return {"message": f"{e.args}"}
     
     payload = {
+        "message": message,
         "mime" : "image/jpg",
         "images": images
         }
