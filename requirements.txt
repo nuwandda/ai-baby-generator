@@ -21,3 +21,7 @@ scipy==1.12.0
 colorthief
 boto3
 einops
+accelerate 
+insightface 
+omegaconf 
+tomesd
