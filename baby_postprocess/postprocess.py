@@ -6,7 +6,7 @@ import subprocess
 from io import BytesIO
 import base64
 from tempfile import mkstemp
-from shutil import move, copymode
+from shutil import move, copymode, rmtree
 from os import fdopen, remove
 from os import listdir
 from os.path import isfile, join
@@ -18,6 +18,8 @@ import torch
 from diffusers import StableDiffusionPipeline, DPMSolverSinglestepScheduler, AutoencoderKL
 from ip_adapter.ip_adapter_faceid import IPAdapterFaceID
 from time import time
+import sys
+import subprocess
 
 
 TEMP_PATH = 'temp'
@@ -43,6 +45,11 @@ def create_temp():
 
 def remove_temp_image(id, photo_number):
     os.remove(TEMP_PATH + '/' + id + '_' + str(photo_number) + '_out.png')
+    # os.remove(TEMP_PATH + '/' + id + '_' + str(photo_number) + '_restored.png')
+
+
+def remove_folder(path):
+    rmtree(path)
 
 
 def replace(file_path, pattern, subst):
@@ -126,7 +133,7 @@ def generate(image_path, temp_id, gender, total_number_of_photos, ethnicity):
     faceid_embeds = torch.from_numpy(faces[0].normed_embedding).unsqueeze(0)
     
     photos = {}
-    prompt = "centered, portrait photo of a 2 years old {} {}, natural skin, dark shot, in the {}".format(race, prompt_gender, theme)
+    prompt = "centered, portrait photo of a 2 years old {} {}, wearing cute clothes, natural skin, dark shot, in the {}".format(race, prompt_gender, theme)
     negative_prompt = """
         (nsfw, naked, nude, deformed iris, deformed pupils, semi-realistic, cgi, 3d, 
         render, sketch, cartoon, drawing, anime, mutated hands and fingers:1.4), 
@@ -136,40 +143,34 @@ def generate(image_path, temp_id, gender, total_number_of_photos, ethnicity):
     """
 
     images = ip_model.generate(prompt=prompt, negative_prompt=negative_prompt, faceid_embeds=faceid_embeds, 
-                               guidance_scale=1.5, num_samples=total_number_of_photos, 
-                               width=512, height=768, num_inference_steps=30)
+                               guidance_scale=1, num_samples=total_number_of_photos, 
+                               width=512, height=768, num_inference_steps=40)
     
     for photo_number in range(total_number_of_photos):
         generated_image = images[photo_number]
+        if not generated_image.getbbox():
+                generated_image = ip_model.generate(prompt=prompt, negative_prompt=negative_prompt, faceid_embeds=faceid_embeds, 
+                               guidance_scale=2.5, num_samples=1, 
+                               width=512, height=768, num_inference_steps=40)[0]
+        
+        generated_image_name = temp_id + '_' + str(photo_number) + '_out.png'
+        generated_image.save(TEMP_PATH + '/' + temp_id + '_' + str(photo_number) + '_out.png')
+        asfileGFP = os.path.abspath("./GFPGAN/inference_gfpgan.py")
+        subprocess.run([
+            sys.executable,
+            asfileGFP,
+            '-i', TEMP_PATH + '/' + temp_id + '_' + str(photo_number) + '_out.png',
+            '-o', TEMP_PATH + '/' + temp_id + '_' + str(photo_number),
+            '-s', '2',
+            #'-w', '90',
+            '--only_center_face'
+        ])
         buffered = BytesIO()
-        generated_image.save(buffered, format="JPEG")
+        final_result = Image.open(TEMP_PATH + '/' + temp_id + '_' + str(photo_number) + '/restored_imgs/' + generated_image_name)
+        final_result.save(buffered, format="JPEG")
         encoded_img = base64.b64encode(buffered.getvalue())
         photos[photo_number] = encoded_img
-
-    # for photo_number in range(total_number_of_photos):
-    #     theme = random.choice(background_prompts)
-    #     reference_path = 'reference_photos/{}/{}/{}/{}'.format(prompt_gender, race, hair_color, theme)
-    #     onlyfiles = [f for f in listdir(reference_path) if isfile(join(reference_path, f))]
-    #     reference_image_name = random.choice(onlyfiles)
-    #     reference_image_path = reference_path + '/' + reference_image_name
-    #     print(reference_image_path)
-
-    #     # Swap the input face with the generated image
-    #     subprocess.call(['python', 'run.py', '-s', '{}'.format(image_path), 
-    #                     '-t', '{}'.format(reference_image_path),
-    #                     '-o', '{}'.format(TEMP_PATH + '/' + temp_id + '_' + str(photo_number) + '_out.png'),
-    #                     '--headless', '--frame-processors', 'face_swapper', 'face_enhancer', '--face-swapper-model',
-    #                     'simswap_256'])
-
-    #     final_image = Image.open(TEMP_PATH + '/' + temp_id + '_' + str(photo_number) + '_out.png')
-    #     buffered = BytesIO()
-    #     final_image.save(buffered, format="JPEG")
-    #     encoded_img = base64.b64encode(buffered.getvalue())
-    #     remove_temp_image(temp_id, photo_number)
-    #     photos[photo_number] = encoded_img
-
-    # os.remove(TEMP_PATH + '/' + temp_id + '_child.png')
-    # os.remove(TEMP_PATH + '/' + temp_id + '_hair.png')
-    
+        remove_temp_image(temp_id, photo_number)
+        remove_folder(TEMP_PATH + '/' + temp_id + '_' + str(photo_number))
     print('Elapsed time: ', time() - start)
     return photos
