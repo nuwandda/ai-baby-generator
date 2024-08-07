@@ -30,7 +30,7 @@ vae_model_path = "stabilityai/sd-vae-ft-mse"
 ip_ckpt = "weights/ip-adapter-faceid_sd15.bin"
 
 app = FaceAnalysis(name="buffalo_l", providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
-app.prepare(ctx_id=0, det_size=(640, 640), det_thresh=0.01)
+app.prepare(ctx_id=0, det_size=(640, 640), det_thresh=0.2)
 
 
 def set_seed():
